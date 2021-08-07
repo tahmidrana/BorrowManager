@@ -1,5 +1,12 @@
 import React, {useState, useEffect, useCallback, useLayoutEffect} from 'react';
-import {View, StyleSheet, Text, TouchableOpacity, FlatList} from 'react-native';
+import {
+  View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  Alert,
+} from 'react-native';
 import {
   FAB,
   Colors,
@@ -9,6 +16,7 @@ import {
   TextInput,
   Modal,
   Button,
+  Snackbar,
 } from 'react-native-paper';
 import colors from '../styles/colors';
 import Icon from 'react-native-vector-icons/FontAwesome';
@@ -20,14 +28,19 @@ import {
   getRecordById,
   createNewPayment,
   getPaymentsByRecordId,
+  recordClose,
 } from '../db-service';
 
-const HeaderRight = () => {
+const HeaderRight = ({onCloseRecord}) => {
   const [menuVisible, setMenuVisible] = useState(false);
 
   const openMenu = () => setMenuVisible(true);
-
   const closeMenu = () => setMenuVisible(false);
+
+  const closeRecord = () => {
+    closeMenu();
+    onCloseRecord();
+  };
 
   return (
     <Menu
@@ -41,8 +54,27 @@ const HeaderRight = () => {
       <Menu.Item onPress={() => {}} title="Edit" />
       <Menu.Item onPress={() => {}} title="Paid & Close" />
       <Divider />
-      <Menu.Item onPress={() => {}} title="Close" />
+      <Menu.Item onPress={closeRecord} title="Close" />
     </Menu>
+  );
+};
+
+const StatusArea = ({subTotal}) => {
+  let status = subTotal === 0 ? 'Paid' : (subTotal < 0 ? 'Over Paid' : '');
+  let bg_color = subTotal === 0 ? colors.SUCCESS : (subTotal < 0 ? colors.WARNING : colors.BLUE_DARK);
+
+  return (
+    <View
+      style={{
+        padding: 12,
+        backgroundColor: bg_color,
+        borderRadius: 8,
+        marginTop: 10,
+      }}>
+      <Text style={{ fontWeight: '700' }}>
+        {status} {subTotal < 0 ? (subTotal * -1) : ''}
+      </Text>
+    </View>
   );
 };
 
@@ -56,24 +88,45 @@ const ViewRecord = ({route, navigation}) => {
   const [modalVisible, setModalVisible] = React.useState(false);
   const [amount, setAmount] = React.useState('');
 
-  /* const [snackVisible, setSnackVisible] = React.useState(false);
+  const [snackVisible, setSnackVisible] = React.useState(false);
   const [message, setMessage] = React.useState('');
 
-  const onToggleSnackBar = () => setSnackVisible(!snackVisible); */
+  const onToggleSnackBar = () => setSnackVisible(!snackVisible);
 
   const showModal = () => setModalVisible(true);
   const hideModal = () => setModalVisible(false);
 
+  const closeRecordAction = async () => {
+    try {
+      const db = await getDBConnection();
+      await recordClose(db, id);
+      loadDataCallback();
+    } catch (e) {
+      //
+    }
+  };
+
+  const closeRecord = () => {
+    Alert.alert('Hold on!', 'Are you sure you want to close this record?', [
+      {
+        text: 'Cancel',
+        onPress: () => null,
+        style: 'cancel',
+      },
+      {text: 'YES', onPress: () => closeRecordAction()},
+    ]);
+  };
+
   const addNewPayment = async () => {
     if (!amount) {
-      /* setMessage('Record Type, Amount & Contact field is required');
-      setSnackVisible(true); */
+      setMessage('Amount field is required');
+      setSnackVisible(true);
       return;
     }
 
     if (isNaN(amount) === true) {
-      /* setMessage('Invalid Amount');
-      setSnackVisible(true); */
+      setMessage('Invalid Amount');
+      setSnackVisible(true);
       return;
     }
 
@@ -87,10 +140,11 @@ const ViewRecord = ({route, navigation}) => {
       const db = await getDBConnection();
       await createNewPayment(db, data);
 
+      loadDataCallback();
       hideModal();
 
-      /* setMessage('Contact Created Successfully');
-      setSnackVisible(true); */
+      setMessage('New payment added');
+      setSnackVisible(true);
 
       setAmount('');
     } catch (error) {
@@ -106,10 +160,13 @@ const ViewRecord = ({route, navigation}) => {
       setRecord(recordData);
 
       const paymentsData = await getPaymentsByRecordId(db, id);
-
       setPayments(paymentsData);
 
       let records_total = 0;
+      paymentsData.forEach(item => {
+        records_total += item.amount;
+      });
+
       let sub_total = recordData.amount - records_total;
       setSubTotal(sub_total);
     } catch (error) {
@@ -119,7 +176,7 @@ const ViewRecord = ({route, navigation}) => {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      headerRight: () => <HeaderRight />,
+      headerRight: () => <HeaderRight onCloseRecord={closeRecord} />,
     });
   }, [navigation]);
 
@@ -133,7 +190,16 @@ const ViewRecord = ({route, navigation}) => {
 
   return (
     <View style={styles.container}>
-      <FAB style={styles.fab} medium icon="plus" onPress={showModal} />
+      {record.is_closed === 0 && (
+        <FAB style={styles.fab} medium icon="plus" onPress={showModal} />
+      )}
+
+      <Snackbar
+        visible={snackVisible}
+        onDismiss={onToggleSnackBar}
+        duration={2000}>
+        {message}
+      </Snackbar>
 
       <View
         style={{
@@ -142,7 +208,12 @@ const ViewRecord = ({route, navigation}) => {
           justifyContent: 'space-between',
         }}>
         <Text style={styles.subTotalText}>Sub Total:</Text>
-        <Text style={styles.subTotalText}>{subTotal}</Text>
+        <Text style={styles.subTotalText}>
+          {subTotal}{' '}
+          {subTotal <= 0 && (
+            <Icon name="check-circle" size={18} color={colors.SUCCESS} />
+          )}
+        </Text>
       </View>
       <View style={styles.detailCard}>
         <View>
@@ -164,12 +235,17 @@ const ViewRecord = ({route, navigation}) => {
             style={{fontWeight: '700', color: colors.WARNING, fontSize: 18}}>
             {record.amount}
           </Text>
-          <Text style={{color: colors.GRAY_LIGHT}}>
-            Due Date:{' '}
-            {record.formatted_due_date ? record.formatted_due_date : '-'}
-          </Text>
+          {record.is_closed 
+            ? <Text style={{color: colors.DANGER}}>Closed</Text>
+            : (<Text style={{color: colors.GRAY_LIGHT}}>
+              Due Date:{' '}
+              {record.formatted_due_date ? record.formatted_due_date : '-'}
+            </Text>)
+          }
         </View>
       </View>
+
+      {subTotal <= 0 && <StatusArea subTotal={subTotal} />}
 
       <View style={{marginTop: 10}}>
         <Text style={{fontSize: 14, marginBottom: 8}}>Payments</Text>
@@ -177,7 +253,9 @@ const ViewRecord = ({route, navigation}) => {
         <FlatList
           data={payments}
           keyExtractor={item => item.id}
-          renderItem={({item}) => PaymentItem(item, navigation)}
+          renderItem={({item}) => (
+            <PaymentItem item={item} onItemDelete={loadDataCallback} />
+          )}
           nestedScrollEnabled={true}
         />
       </View>
@@ -234,7 +312,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderRadius: 8,
-    // backgroundColor: '#dfe6e9',
     backgroundColor: '#6c5ce7',
   },
   fab: {

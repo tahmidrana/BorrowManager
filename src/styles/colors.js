@@ -4,6 +4,7 @@ const colors = {
   WHITE: '#FFFFFF',
   BLACK: '#000000',
   ACCENT: '#a29bfe',
+  DANGER: '#ffbe76',
 
   // ACTIONS
   SUCCESS: '#55efc4',

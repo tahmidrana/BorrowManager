@@ -1,9 +1,32 @@
 import React from 'react';
-import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity, Alert} from 'react-native';
 import colors from '../../styles/colors';
 import Icon from 'react-native-vector-icons/FontAwesome';
 
-const PaymentItem = (item, navigation) => {
+import {getDBConnection, deletePaymentById} from '../../db-service';
+
+const PaymentItem = ({item, onItemDelete}) => {
+  const deletePaymentAction = async () => {
+    try {
+      const db = await getDBConnection();
+      await deletePaymentById(db, item.id);
+      onItemDelete();
+    } catch (e) {
+      //
+    }
+  };
+
+  const deletePayment = async () => {
+    Alert.alert('Hold on!', 'Are you sure you want to delete?', [
+      {
+        text: 'Cancel',
+        onPress: () => null,
+        style: 'cancel',
+      },
+      {text: 'YES', onPress: () => deletePaymentAction()},
+    ]);
+  };
+
   return (
     <View style={styles.recordItemCard}>
       <View>
@@ -13,7 +36,7 @@ const PaymentItem = (item, navigation) => {
         </Text>
       </View>
       <View>
-        <TouchableOpacity style={{padding: 8}}>
+        <TouchableOpacity style={{padding: 8}} onPress={deletePayment}>
           <Icon name="trash-o" size={20} color="#ff7675" />
         </TouchableOpacity>
       </View>

@@ -170,6 +170,11 @@ export const getPaymentsByRecordId = async (db, record_id) => {
   }
 };
 
+export const recordClose = async (db, id) => {
+  const insertQuery = `UPDATE ${tbl_records} SET is_closed = 1 where id = ${id};`;
+  return db.executeSql(insertQuery);
+};
+
 export const createNewPayment = async (db, data) => {
   if (data.record_date) {
     const dt = new Date(data.record_date);
@@ -177,13 +182,16 @@ export const createNewPayment = async (db, data) => {
     data.record_date = record_date;
   }
 
-  console.log(data);
-
   const insertQuery = `INSERT INTO ${tbl_payments}(amount, record_id, record_date) 
   values('${data.amount}', '${data.record_id}', '${data.record_date}')`;
 
   // return db.executeSql(insertQuery, [checklist.title, checklist.created_at]);
   return db.executeSql(insertQuery);
+};
+
+export const deletePaymentById = async (db, id) => {
+  const query = `DELETE FROM ${tbl_payments} where id = ${id};`;
+  return db.executeSql(query);
 };
 
 const formatDate = date => {
