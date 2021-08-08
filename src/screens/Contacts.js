@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {View, Text, StyleSheet, FlatList} from 'react-native';
+import Loader from '../components/Loader';
 import {
   FAB,
   Colors,
@@ -21,6 +22,8 @@ import colors from '../styles/colors';
 import ContactItem from '../components/contacts/ContactItem';
 
 const Contacts = ({navigation}) => {
+  const [loading, setLoading] = useState(true);
+
   const [contacts, setContacts] = useState([]);
 
   const [visible, setVisible] = React.useState(false);
@@ -75,6 +78,7 @@ const Contacts = ({navigation}) => {
 
       const contactsData = await getContacts(db);
       setContacts(contactsData);
+      // setLoading(false);
     } catch (error) {
       console.log(error);
     }
@@ -85,6 +89,9 @@ const Contacts = ({navigation}) => {
       // The screen is focused
       // Call any action
       loadDataCallback();
+      setTimeout(() => {
+        setLoading(false);
+      }, 1000);
     });
 
     // Return the function to unsubscribe from the event so it gets removed on unmount
@@ -160,14 +167,20 @@ const Contacts = ({navigation}) => {
         </Modal>
       </Portal>
 
-      <View>
-        <FlatList
-          data={contacts}
-          keyExtractor={item => item.id}
-          renderItem={({item}) => ContactItem(item)}
-          nestedScrollEnabled={true}
-        />
-      </View>
+      {loading ? (
+        <Loader />
+      ) : (
+        <>
+          <View>
+            <FlatList
+              data={contacts}
+              keyExtractor={item => item.id}
+              renderItem={({item}) => ContactItem(item)}
+              nestedScrollEnabled={true}
+            />
+          </View>
+        </>
+      )}
     </View>
   );
 };

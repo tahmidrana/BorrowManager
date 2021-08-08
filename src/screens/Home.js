@@ -3,6 +3,7 @@ import colors from '../styles/colors';
 import {View, Text, StyleSheet, FlatList} from 'react-native';
 import {FAB, Colors} from 'react-native-paper';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import Loader from '../components/Loader';
 
 import HomeItem from '../components/home/HomeItem';
 
@@ -12,6 +13,8 @@ const Home = ({navigation}) => {
   const [records, setRecords] = useState([]);
   const [givenVal, setGivenVal] = useState(0);
   const [takenVal, setTakenVal] = useState(0);
+
+  const [loading, setLoading] = useState(true);
 
   const loadDataCallback = useCallback(async () => {
     try {
@@ -31,6 +34,7 @@ const Home = ({navigation}) => {
 
         setGivenVal(given);
         setTakenVal(taken);
+        setLoading(false);
       }
     } catch (error) {
       console.log(error);
@@ -42,6 +46,9 @@ const Home = ({navigation}) => {
       // The screen is focused
       // Call any action
       loadDataCallback();
+      /* setTimeout(() => {
+        setLoading(false);
+      }, 1000); */
     });
 
     // Return the function to unsubscribe from the event so it gets removed on unmount
@@ -56,9 +63,9 @@ const Home = ({navigation}) => {
         icon="plus"
         onPress={() => navigation.navigate('NewRecord')}
       />
-      {/* <Button title="Contacts" onPress={() => navigation.navigate('contactsScreenStack', { screen: 'Contacts' })} /> */}
-      
-      {/* <Button onPress={() => navigation.navigate('ViewRecord', {id: 1})} title="View" /> */}
+
+      { loading ? <Loader /> : <>
+
       <View style={styles.countingsWrapper}>
         <View style={styles.givenWrapper}>
           <Text style={[styles.givenTitle, {color: colors.SUCCESS}]}>
@@ -87,6 +94,7 @@ const Home = ({navigation}) => {
           navigation={navigation}
         />
       </View>
+      </>}
     </View>
   );
 };

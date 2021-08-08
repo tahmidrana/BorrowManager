@@ -21,6 +21,8 @@ import {
 import colors from '../styles/colors';
 import Icon from 'react-native-vector-icons/FontAwesome';
 
+import Loader from '../components/Loader';
+
 import PaymentItem from '../components/records/PaymentItem';
 
 import {
@@ -60,8 +62,13 @@ const HeaderRight = ({onCloseRecord}) => {
 };
 
 const StatusArea = ({subTotal}) => {
-  let status = subTotal === 0 ? 'Paid' : (subTotal < 0 ? 'Over Paid' : '');
-  let bg_color = subTotal === 0 ? colors.SUCCESS : (subTotal < 0 ? colors.WARNING : colors.BLUE_DARK);
+  let status = subTotal === 0 ? 'Paid' : subTotal < 0 ? 'Over Paid' : '';
+  let bg_color =
+    subTotal === 0
+      ? colors.SUCCESS
+      : subTotal < 0
+      ? colors.WARNING
+      : colors.BLUE_DARK;
 
   return (
     <View
@@ -71,8 +78,8 @@ const StatusArea = ({subTotal}) => {
         borderRadius: 8,
         marginTop: 10,
       }}>
-      <Text style={{ fontWeight: '700' }}>
-        {status} {subTotal < 0 ? (subTotal * -1) : ''}
+      <Text style={{fontWeight: '700'}}>
+        {status} {subTotal < 0 ? subTotal * -1 : ''}
       </Text>
     </View>
   );
@@ -80,6 +87,8 @@ const StatusArea = ({subTotal}) => {
 
 const ViewRecord = ({route, navigation}) => {
   const {id} = route.params;
+
+  const [loading, setLoading] = useState(true);
 
   const [subTotal, setSubTotal] = useState(0);
   const [record, setRecord] = useState({});
@@ -183,6 +192,10 @@ const ViewRecord = ({route, navigation}) => {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadDataCallback();
+
+      setTimeout(() => {
+        setLoading(false);
+      }, 800);
     });
 
     return unsubscribe;
@@ -190,9 +203,7 @@ const ViewRecord = ({route, navigation}) => {
 
   return (
     <View style={styles.container}>
-      {record.is_closed === 0 && (
-        <FAB style={styles.fab} medium icon="plus" onPress={showModal} />
-      )}
+      <FAB style={styles.fab} medium icon="plus" onPress={showModal} />
 
       <Snackbar
         visible={snackVisible}
@@ -201,64 +212,77 @@ const ViewRecord = ({route, navigation}) => {
         {message}
       </Snackbar>
 
-      <View
-        style={{
-          marginBottom: 10,
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-        }}>
-        <Text style={styles.subTotalText}>Sub Total:</Text>
-        <Text style={styles.subTotalText}>
-          {subTotal}{' '}
-          {subTotal <= 0 && (
-            <Icon name="check-circle" size={18} color={colors.SUCCESS} />
-          )}
-        </Text>
-      </View>
-      <View style={styles.detailCard}>
-        <View>
-          <Text style={{fontWeight: '700', fontSize: 18, color: colors.WHITE}}>
-            {record.record_type == 1 ? (
-              <Icon name="arrow-up" color={colors.SUCCESS} />
-            ) : (
-              <Icon name="arrow-down" color={colors.WARNING} />
-            )}
-            {record.record_type == 1 ? ' Given to' : ' Taken from'}{' '}
-            {record.contact}
-          </Text>
-          <Text style={{color: colors.GRAY_LIGHT}}>
-            {record.formatted_created_at}
-          </Text>
-        </View>
-        <View style={{alignItems: 'flex-end'}}>
-          <Text
-            style={{fontWeight: '700', color: colors.WARNING, fontSize: 18}}>
-            {record.amount}
-          </Text>
-          {record.is_closed 
-            ? <Text style={{color: colors.DANGER}}>Closed</Text>
-            : (<Text style={{color: colors.GRAY_LIGHT}}>
-              Due Date:{' '}
-              {record.formatted_due_date ? record.formatted_due_date : '-'}
-            </Text>)
-          }
-        </View>
-      </View>
+      {loading ? (
+        <Loader />
+      ) : (
+        <>
+          <View
+            style={{
+              marginBottom: 10,
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+            }}>
+            <Text style={styles.subTotalText}>Sub Total:</Text>
+            <Text style={styles.subTotalText}>
+              {subTotal}{' '}
+              {subTotal <= 0 && (
+                <Icon name="check-circle" size={18} color={colors.SUCCESS} />
+              )}
+            </Text>
+          </View>
 
-      {subTotal <= 0 && <StatusArea subTotal={subTotal} />}
+          <View style={styles.detailCard}>
+            <View>
+              <Text
+                style={{fontWeight: '700', fontSize: 18, color: colors.WHITE}}>
+                {record.record_type == 1 ? (
+                  <Icon name="arrow-up" color={colors.SUCCESS} />
+                ) : (
+                  <Icon name="arrow-down" color={colors.WARNING} />
+                )}
+                {record.record_type == 1 ? ' Given to' : ' Taken from'}{' '}
+                {record.contact}
+              </Text>
+              <Text style={{color: colors.GRAY_LIGHT}}>
+                {record.formatted_created_at}
+              </Text>
+            </View>
+            <View style={{alignItems: 'flex-end'}}>
+              <Text
+                style={{
+                  fontWeight: '700',
+                  color: colors.WARNING,
+                  fontSize: 18,
+                }}>
+                {record.amount}
+              </Text>
+              {record.is_closed ? (
+                <Text style={{color: colors.DANGER}}>Closed</Text>
+              ) : (
+                <Text style={{color: colors.GRAY_LIGHT}}>
+                  Due Date:{' '}
+                  {record.formatted_due_date ? record.formatted_due_date : '-'}
+                </Text>
+              )}
+            </View>
+          </View>
 
-      <View style={{marginTop: 10}}>
-        <Text style={{fontSize: 14, marginBottom: 8}}>Payments</Text>
+          {subTotal <= 0 && <StatusArea subTotal={subTotal} />}
 
-        <FlatList
-          data={payments}
-          keyExtractor={item => item.id}
-          renderItem={({item}) => (
-            <PaymentItem item={item} onItemDelete={loadDataCallback} />
-          )}
-          nestedScrollEnabled={true}
-        />
-      </View>
+          <View style={{marginTop: 10}}>
+            <Text style={{fontSize: 14, marginBottom: 8}}>Payments</Text>
+
+            <FlatList
+              data={payments}
+              keyExtractor={item => item.id}
+              renderItem={({item}) => (
+                <PaymentItem item={item} onItemDelete={loadDataCallback} />
+              )}
+              nestedScrollEnabled={true}
+            />
+          </View>
+        </>
+      )}
 
       <Portal>
         <Modal
